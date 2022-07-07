@@ -11,7 +11,7 @@
             "program": "${workspaceRoot}/run.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["pack"]
+            "args": ["live-pack"]
         }
     ]
 }

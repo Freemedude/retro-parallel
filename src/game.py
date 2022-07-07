@@ -2,9 +2,10 @@
 
 import pygame as pg
 import os
-import json
+import sys
 from src.player import *
-from src.atlas import Atlas
+from src.assets import Atlas, pack_raw_files, live_pack_check_monitored_files, update_monitored_raw_files
+
 
 # See if we can load more than standard BMP
 if not pg.image.get_extended():
@@ -12,16 +13,24 @@ if not pg.image.get_extended():
 
 SCREENRECT = pg.Rect(0, 0, 640, 480)
 
-def load_image(file):
-    file = os.path.join(os.curdir, "data", "images", file)
-    try:
-        surface = pg.image.load(file)
-    except pg.error:
-        raise SystemExit(f'Could not load image "{file}" {pg.get_error()}')
-    return surface.convert_alpha()
+atlas : Atlas
+
+def set_icon(atlas):
+    icon = atlas.get_image("icon.aseprite")
+    pg.display.set_icon(icon.image)
 
 
 def main(winstyle=0):
+    if len(sys.argv) > 1:
+        # Pack on startup
+        if sys.argv[1] == "pack":
+            pack_raw_files()
+        
+        # Keep packing when changes are detected, this is pretty fkin neat.
+        if sys.argv[1] == "live-pack":
+            pack_raw_files()
+            update_monitored_raw_files()
+
     #  Initialize pygame
     if pg.get_sdl_version()[0] == 2:
         pg.mixer.pre_init(44100, 32, 2, 1024)
@@ -30,6 +39,7 @@ def main(winstyle=0):
         print("Warning, no sound")
         pg.mixer = None
 
+
     # Set the display mode
     winstyle = 0  # |FULLSCREEN
     bestdepth = pg.display.mode_ok(SCREENRECT.size, winstyle, 32)
@@ -37,18 +47,19 @@ def main(winstyle=0):
 
     pg.display.set_caption("Retro Parallel")
 
-    bgdtile = load_image("test.png")
     # Load texture atlas
+    global atlas
     atlas = Atlas("texture-atlas.json", "texture-atlas.png")
 
     clock = pg.time.Clock()
     background = pg.Surface(SCREENRECT.size, pg.SRCALPHA)
 
     pg.Surface.fill(background, (255, 0, 0))
-    background.blit(bgdtile, (5, 5))
     pg.display.flip()
-    icon = pg.transform.scale(bgdtile, (32, 32))
-    pg.display.set_icon(icon)
+
+    set_icon(atlas)
+    atlas.add_listener(set_icon)
+    
     color = (255, 0, 0)
     running = True
 
@@ -61,7 +72,7 @@ def main(winstyle=0):
     frame_rate = 30
     delta_time = 0
     while running:
-
+        live_pack_check_monitored_files(atlas)
         # Handle events
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -86,4 +97,4 @@ def main(winstyle=0):
         
         delta_time = clock.tick(frame_rate) / 1000
 
-    pg.time.wait(1000)
+    pg.saved_time.wait(1000)
