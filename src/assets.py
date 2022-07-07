@@ -1,13 +1,24 @@
 #!/usr/bin/env python
 
+"""
+This file contains stuff related to asset management
+
+"""
+
 import os
 import pygame as pg
 import json
 from pathlib import Path
 
+"""
+This is a list of all the files that are monitored for changed when live-pack is on.
+"""
 monitored_raw_files = []
 
-def load_image(file):
+def load_image_alpha(file):
+    """
+    Loads a file from disk and exports it as a Pygame.Surface
+    """
     file = os.path.join(os.curdir, "data", file)
     try:
         surface = pg.image.load(file)
@@ -16,45 +27,85 @@ def load_image(file):
     return surface.convert_alpha()
 
 
-# Packing requires aseprite on the path!
 def pack_raw_files():
-    in_dir = os.path.join("data", "raw")
+    """
+    Uses Aseprite to take all the Aseprite project files and combine them into a texture atlas (see 
+    data/packed/texture-atlas). A texture atlas is a collection of many individual images and a 
+    data file (in JSON) describing where in the image the invidiual images are located. This is 
+    done to make it easier for a computer to work with them. This might not matter at all in 
+    Pygame, since they all have to be exported as Surfaces anyway. BUT NOW WE GOT EM.
+
+    This function runs a small commandline command to take all the files ending in ".aseprite" in 
+    the data/raw directory and combine them into a texture atlas. Using this function requires 
+    Aseprite to be installed and added to the path!
+    """
+
+    input_files = os.path.join("data", "raw", "*.aseprite")
+
+    options = "--sheet-pack --ignore-empty --split-layers"
+
     out_dir = os.path.join("data", "packed")
-    os.system(f"aseprite -b {in_dir}{os.sep}*.aseprite --sheet-pack --ignore-empty --split-layers --sheet {out_dir}{os.sep}texture-atlas.png --data {out_dir}{os.sep}texture-atlas.json")
+    out_name = "texture_atlas"
+    json_out = os.path.join(out_dir, out_name + ".json")
+    png_out = os.path.join(out_dir, out_name + ".png")
+
+    os.system(f"aseprite -b {input_files} {options} --sheet {png_out} --data {json_out}")
 
 
-def update_monitored_raw_files():
+def update_monitored_raw_file_timestamps():
+    """
+    Update the timestamps on all the monitored files
+    """
     global monitored_raw_files
     monitored_raw_files = [(str(file), os.path.getmtime(file)) for file in Path(os.path.join("data", "raw")).rglob("*.aseprite")]
 
 
 def live_pack_check_monitored_files(atlas):
-      global monitored_raw_files
-      if any(os.path.getmtime(file) != saved_time for (file, saved_time) in monitored_raw_files):
+    """
+    Checks if any the files in monitored_raw_files have been updated since last we packed.
+    If any have changed, update the atlas.
+    """
+    global monitored_raw_files
+    if any(os.path.getmtime(file) != saved_time for (file, saved_time) in monitored_raw_files):
         print("Some file has changed, updating packed!")
         pack_raw_files()
-        update_monitored_raw_files()
+        update_monitored_raw_file_timestamps()
         atlas.update_atlas()
         
 class Texture():
-    rect : pg.Rect
+    """
+    Represents a texture. Essentially just a Pygame.Surface with a little extra info.
+    """
+    name : str
     seconds : int
     image : pg.Surface
 
-    def __init__(self, rect, seconds, image):
-        self.rect = rect
+    def __init__(self, name, seconds, image):
+        self.name = name
         self.seconds = seconds
         self.image = image
 
 
+    def __str__(self):
+        return self.name
+       
+    def __lt__(self, other):
+        return self.name < other.name
+    
+
+
 class Atlas():
 
+    """
+    A list of all the textures
+    """
     entries : list[Texture]
 
     def __init__(self, data_path: str, atlas_path: str):
         self.data_path = data_path
         self.atlas_path = atlas_path
         self.initialize_atlas()
+
         self.listeners = []
 
 
@@ -74,11 +125,10 @@ class Atlas():
         # Fetch each frame
         frames = content['frames']
 
-
         # Go over all frames
-        for frame in frames:
+        for name in frames:
 
-            this = frames[frame]
+            this = frames[name]
             
             # Extract data
             x = this['frame']['x']
@@ -91,7 +141,8 @@ class Atlas():
             
             image.blit(self.image, (0, 0), rect)
 
-            self.entries[frame] = Texture(rect, seconds, image)
+            self.entries[name] = Texture(name, seconds, image)
+
 
     def update_atlas(self):
         self.initialize_atlas()
@@ -99,18 +150,28 @@ class Atlas():
         for listener in self.listeners:
             listener(self)
 
+
     def add_listener(self, func):
         self.listeners.append(func)
 
 
     def get_animation(self, name): 
+        def anim_comp(a):
+            start = a.name.find(" ")
+            end = a.name.find(".")
+            number_str = a.name[start:end]
+            number = int(number_str)
+            return number
+
+
         results = []
         # We need to look through the atlas for everyhing that starts with name
         for key in self.entries.keys():
             if key.startswith(name):
                 results.append(self.entries[key])
 
-        # Todo: Sort them
+        results.sort(key=anim_comp)
+
         return results
 
 

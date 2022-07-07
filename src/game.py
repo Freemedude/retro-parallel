@@ -1,17 +1,12 @@
 #!/usr/bin/env python
 
 import pygame as pg
-import os
 import sys
 from src.player import *
-from src.assets import Atlas, pack_raw_files, live_pack_check_monitored_files, update_monitored_raw_files
+from src.assets import Atlas, pack_raw_files, live_pack_check_monitored_files, update_monitored_raw_file_timestamps
 
 
-# See if we can load more than standard BMP
-if not pg.image.get_extended():
-    raise SystemExit("Sorry, extended image module required")
-
-SCREENRECT = pg.Rect(0, 0, 640, 480)
+SCREENRECT = pg.Rect(0, 0, 1280, 720)
 
 atlas : Atlas
 
@@ -21,7 +16,16 @@ def set_icon(atlas):
 
 
 def main(winstyle=0):
+    
+    # See if we can load more than standard BMP
+    if not pg.image.get_extended():
+        raise SystemExit("Sorry, extended image module required")
+    
+
+    live_pack = False
+    # Check command line arguments
     if len(sys.argv) > 1:
+
         # Pack on startup
         if sys.argv[1] == "pack":
             pack_raw_files()
@@ -29,7 +33,9 @@ def main(winstyle=0):
         # Keep packing when changes are detected, this is pretty fkin neat.
         if sys.argv[1] == "live-pack":
             pack_raw_files()
-            update_monitored_raw_files()
+            update_monitored_raw_file_timestamps()
+            live_pack = True
+
 
     #  Initialize pygame
     if pg.get_sdl_version()[0] == 2:
@@ -41,7 +47,7 @@ def main(winstyle=0):
 
 
     # Set the display mode
-    winstyle = 0  # |FULLSCREEN
+    winstyle = 0
     bestdepth = pg.display.mode_ok(SCREENRECT.size, winstyle, 32)
     screen = pg.display.set_mode(SCREENRECT.size, winstyle, bestdepth)
 
@@ -49,7 +55,10 @@ def main(winstyle=0):
 
     # Load texture atlas
     global atlas
-    atlas = Atlas("texture-atlas.json", "texture-atlas.png")
+    atlas = Atlas("texture_atlas.json", "texture_atlas.png")
+
+    set_icon(atlas)
+    atlas.add_listener(set_icon)
 
     clock = pg.time.Clock()
     background = pg.Surface(SCREENRECT.size, pg.SRCALPHA)
@@ -57,8 +66,7 @@ def main(winstyle=0):
     pg.Surface.fill(background, (255, 0, 0))
     pg.display.flip()
 
-    set_icon(atlas)
-    atlas.add_listener(set_icon)
+
     
     color = (255, 0, 0)
     running = True
@@ -72,7 +80,10 @@ def main(winstyle=0):
     frame_rate = 30
     delta_time = 0
     while running:
-        live_pack_check_monitored_files(atlas)
+        # Handle live packing
+        if live_pack: 
+            live_pack_check_monitored_files(atlas)
+        
         # Handle events
         for event in pg.event.get():
             if event.type == pg.QUIT:

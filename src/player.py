@@ -13,8 +13,8 @@ class Player(pg.sprite.Sprite):
     animations : dict[Animations, list[Texture]] = {}
 
     def __init__(self, atlas):
-        # Add this to atlas
         pg.sprite.Sprite.__init__(self, self.containers)
+        # Add this to atlas
         
         self.fetch_player_assets(atlas)
         atlas.add_listener(self.fetch_player_assets)
