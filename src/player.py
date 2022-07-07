@@ -25,13 +25,13 @@ class Player(pg.sprite.Sprite):
     def fetch_player_assets(self, atlas):        
         self.animations[self.Animations.RUNNING] = atlas.get_animation("anim_player_run")
 
+
     def start_animation(self, animation):
         self.current_animation = animation
         self.animation_index = 0
         frame = self.animations[self.current_animation][self.animation_index]
         self.animation_timer = frame.seconds
-        self.image = frame.image
-        self.image = pg.transform.scale(self.image, (10, 10))
+        self.image = pg.transform.scale(frame.image, (64 * 5, 64 * 5))
         self.rect = self.image.get_rect()
 
 
@@ -42,7 +42,7 @@ class Player(pg.sprite.Sprite):
         if self.animation_timer < 0:
             self.animation_index = (self.animation_index + 1) % len(anim)
             frame = anim[self.animation_index]
-            self.image = frame.image
+            self.image = pg.transform.scale(frame.image, (64 * 5, 64 * 5))
             self.animation_timer = frame.seconds
             self.rect = self.image.get_rect()
 

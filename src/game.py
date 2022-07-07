@@ -47,7 +47,7 @@ def main(winstyle=0):
 
 
     # Set the display mode
-    winstyle = 0
+    winstyle = pg.RESIZABLE
     bestdepth = pg.display.mode_ok(SCREENRECT.size, winstyle, 32)
     screen = pg.display.set_mode(SCREENRECT.size, winstyle, bestdepth)
 
@@ -63,7 +63,6 @@ def main(winstyle=0):
     clock = pg.time.Clock()
     background = pg.Surface(SCREENRECT.size, pg.SRCALPHA)
 
-    pg.Surface.fill(background, (255, 0, 0))
     pg.display.flip()
 
 
@@ -79,6 +78,13 @@ def main(winstyle=0):
 
     frame_rate = 30
     delta_time = 0
+    
+    color_fade_direction = 1
+    color_fade = 0
+    color_speed = 0.01 # Color changes by 0.01 per second
+    color_range = 200
+    color_min = 20
+    
     while running:
         # Handle live packing
         if live_pack: 
@@ -96,8 +102,13 @@ def main(winstyle=0):
         
         screen.blit(background, (0, 0))
         
-        red = 255 if color[0] <= 0 else color[0] - 1
-        blue = 0 if color[2] >= 255 else color[2] + 1
+        color_fade += color_fade_direction * color_speed
+
+        # Inver color fade direction if we have gone out of bounds!
+        if color_fade < 0 or color_fade > 1:
+            color_fade_direction = -color_fade_direction
+        red = color_min + color_range * color_fade
+        blue = color_min + color_range * (1 - color_fade)
 
         player.update(delta_time)
         all.draw(screen)
