@@ -5,6 +5,7 @@ This file contains stuff related to asset management
 
 """
 
+from email.mime import base
 import os
 import pygame as pg
 import json
@@ -15,11 +16,13 @@ This is a list of all the files that are monitored for changed when live-pack is
 """
 monitored_raw_files = []
 
+base_dir = os.path.join("data", "images")
+
 def load_image_alpha(file):
     """
     Loads a file from disk and exports it as a Pygame.Surface
     """
-    file = os.path.join(os.curdir, "data", file)
+    file = os.path.join(base_dir, file)
     try:
         surface = pg.image.load(file)
     except pg.error:
@@ -40,11 +43,11 @@ def pack_raw_files():
     Aseprite to be installed and added to the path!
     """
 
-    input_files = os.path.join("data", "raw", "*.aseprite")
+    input_files = os.path.join(base_dir, "raw", "*.aseprite")
 
     options = "--sheet-pack --ignore-empty --split-layers"
 
-    out_dir = os.path.join("data", "packed")
+    out_dir = os.path.join(base_dir, "packed")
     out_name = "texture_atlas"
     json_out = os.path.join(out_dir, out_name + ".json")
     png_out = os.path.join(out_dir, out_name + ".png")
@@ -57,7 +60,7 @@ def update_monitored_raw_file_timestamps():
     Update the timestamps on all the monitored files
     """
     global monitored_raw_files
-    monitored_raw_files = [(str(file), os.path.getmtime(file)) for file in Path(os.path.join("data", "raw")).rglob("*.aseprite")]
+    monitored_raw_files = [(str(file), os.path.getmtime(file)) for file in Path(os.path.join(base_dir, "raw")).rglob("*.aseprite")]
 
 
 def live_pack_check_monitored_files(atlas):
@@ -114,9 +117,9 @@ class Atlas():
         self.entries = {}
 
         # Load the files
-        data = open(os.path.join("data", "packed", self.data_path))
+        data = open(os.path.join(base_dir, "packed", self.data_path))
         
-        atlas_full_path = os.path.join("data", "packed", self.atlas_path)
+        atlas_full_path = os.path.join(base_dir, "packed", self.atlas_path)
         self.image = pg.image.load(atlas_full_path)
         
         # Convert from JSON to python dict.
